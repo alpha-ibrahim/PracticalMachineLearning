@@ -1,0 +1,85 @@
+---
+title: "PML Project"
+output: html_document
+---
+
+### Introduction
+
+The collection of large amount of personal data at low cost is nowadays possible due to devices like Jawbone Up, Nike FuelBand, and Fitbit. Although there is large amount of data available on a given sport activities, the problem of quantifying how well a given exercise is perform received little attention. 
+
+In this assignment, we would like to quantify how well a group of six participants do the Unilateral Dumbbell Biceps Curl exercise. The six participants were asked to perform the exercise correctly and incorrectly in five different ways and data were collect with four different sensors placed on their bodies and the dumbbell for more details on the procedure used to collect the data see Ref.[1]. The data used here can be found from the website here: <http://groupware.les.inf.puc-rio.br/har>.
+
+
+### Data Exploration and Visualization
+The training and testing  data sets for this project were obtained from <https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv> and <https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv> respectively.
+
+
+```{r}
+library(caret)
+library(ggplot2)
+pmlTraining = read.csv("pml-training.csv", header = TRUE) 
+pmlTesting = read.csv('pml-testing.csv', header = TRUE) 
+```
+
+```{r}
+dim(pmlTraining)
+```
+The training data has 160 columns and 19622 rows.  The five different manners in which the subjects were asked to do the exercise constitute the different classes (A, B, C, D, E). More precisely, the classes correspond to the following. 
+
+Class A: exactly according to the specification
+Class B: throwing the elbows to the front
+Class C: lifting the dumbbell only halfway 
+Class D: lowering the dumbbell only halfway and
+Class E: throwing the hips to the front.
+
+The figure below shows the distribution of the training data among the different classes.
+```{r}
+ plot(pmlTraining$classe)
+```
+
+
+Not all the rows have numeric entries and some of the row with numeric entries are not necessary to built the classification model. So one has to do a bit of data cleaning.
+
+First of all, the columns contain NA entries were removed from the training data to obtained numeric entries only. Then the columns that will not play a role in the prediction model were also removed. 
+```{r}
+t<-pmlTraining[, colSums(is.na(pmlTraining)) == 0 ] 
+nums <- sapply(t, is.numeric) 
+nums[1:7] = F 
+nums[93] = T # 
+training<-t[, nums]
+```
+
+```{r}
+dim(training)
+```
+The cleaned training data now has 53 columns and 19622 rows. This is the data that is used the build the model.
+
+### Model Building
+The training data now contains 52 predictor variables and one outcome variable (classe). The predictor variable correspond to the Euler angles (roll, pitch and yaw), as well as the raw accelerometer, gyroscope and
+magnetometer readings of the four censors used to collect the data.
+The train function from the caret packaged was used to build a classification model with random forest as the training method. All the 52 predictor variables are used.
+
+The clean training data still has 19622 rows, so building a model using the random forest method with all of the training data will take a long time. In order to avoid waiting for a long time, a subset (about 20%) of the training data was used to build the model. This was good enough to obtain more than 95% accuracy in the final model (see summary below). The 
+
+```{r}
+inTrain <- createDataPartition(y=training$classe, p=0.2, list=FALSE)
+subSet = training[inTrain,]
+dim(subSet)
+modFit <- train(classe ~ ., data=subSet, method="rf",prox=TRUE)
+```
+
+The summary of the final model is given below:
+
+```{r}
+modFit
+modFit$finalModel
+```
+The model was cross validated using bootstraping with 25 repetitions. The out of sample error is estimated to be around 3%.
+
+### Conclusion
+The model that is build is seem to be quite accurate as can be seen from the confusion matrix above. Although random forests methods lead to accurate models, they tend to be verry time consuming and there is a risk of overfitting the data if one is not careful. 
+
+### References
+[1] Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+
+
